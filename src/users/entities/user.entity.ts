@@ -1,6 +1,8 @@
 
 import { ObjectType, Field, ID } from '@nestjs/graphql';
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+
+import { Item } from './../../items/entities/item.entity';
 
 @Entity({ name: 'users' })
 @ObjectType()
@@ -36,9 +38,13 @@ export class User {
   @Field( () => Boolean )
   isActive: boolean;
 
-   // Relaciones
-   @ManyToOne( () => User, (user) => user.lastUpdateBy, { nullable: true, lazy: true })
-   @JoinColumn({ name: 'lastUpdateBy' })
-   @Field( () => User, { nullable: true })
-   lastUpdateBy?: User;
+  // Relaciones
+  @ManyToOne( () => User, (user) => user.lastUpdateBy, { nullable: true, lazy: true } )
+  @JoinColumn({ name: 'lastUpdateBy' })
+  @Field( () => User, { nullable: true })
+  lastUpdateBy?: User;
+
+  @OneToMany( () => Item, (item) => item.user, { lazy: true } )
+  @Field( () => [Item] )
+  items: Item[];
 }
