@@ -22,3 +22,4 @@ npm run start:dev
 localhost:{{port}}/graphql
 localhost:4000/graphql
 ```
+6. Ejecutar __"executeSeed"__ para llenar la BD con infomracion
