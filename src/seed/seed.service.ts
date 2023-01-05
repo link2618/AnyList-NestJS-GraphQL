@@ -3,13 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { SEED_USERS, SEED_ITEMS } from './data/seed-data';
+import { SEED_USERS, SEED_ITEMS, SEED_LISTS } from './data/seed-data';
 
 import { Item } from './../items/entities/item.entity';
 import { User } from './../users/entities/user.entity';
+import { List } from './../lists/entities/list.entity';
+import { ListItem } from './../list-item/entities/list-item.entity';
 
 import { ItemsService } from '../items/items.service';
 import { UsersService } from './../users/users.service';
+import { ListsService } from './../lists/lists.service';
+import { ListItemService } from './../list-item/list-item.service';
 
 @Injectable()
 export class SeedService {
@@ -24,8 +28,16 @@ export class SeedService {
         @InjectRepository(User)
         private readonly usersRepository: Repository<User>,
 
-        private readonly usersService: UsersService,
-        private readonly itemsService: ItemsService,
+        @InjectRepository(ListItem)
+        private readonly listItemsRepository: Repository<ListItem>,
+
+        @InjectRepository(List)
+        private readonly listsRepository: Repository<List>,
+
+        private readonly usersService:    UsersService,
+        private readonly itemsService:    ItemsService,
+        private readonly listsService:    ListsService,
+        private readonly listItemService: ListItemService,
     ) {
         this.isProd = configService.get('STATE') === 'prod';
     }
@@ -44,10 +56,33 @@ export class SeedService {
         // Crear items
         await this.loadItems( user );
 
+        // Crear listas
+        const lists = await this.loadLists( user );
+
+        // Crear listItems
+        let offset = 0;
+        for (const list of lists) {
+            const items = await this.itemsService.findAll(user, { limit: 15, offset }, {});
+            await this.loadListItems( list, items )
+            offset += 15;
+        }
+
         return true;
     }
 
     async deleteDatabase() {
+        // ListItems
+        await this.listItemsRepository.createQueryBuilder()
+            .delete()
+            .where({})
+            .execute();
+
+        // Lists
+        await this.listsRepository.createQueryBuilder()
+            .delete()
+            .where({})
+            .execute();
+
         // borrar items
         await this.itemsRepository.createQueryBuilder()
             .delete()
@@ -79,5 +114,26 @@ export class SeedService {
         }
 
         await Promise.all( itemsPromises );
+    }
+
+    async loadLists( user: User ): Promise<List[]> {
+        const lists = [];
+
+        for (const list of SEED_LISTS ) {
+            lists.push( await this.listsService.create( list, user ) )
+        }
+
+        return lists;
+    }
+
+    async loadListItems( list: List, items: Item[] ) {
+        for (const item of items ) {
+            this.listItemService.create({
+                quantity: Math.round( Math.random() * 10 ),
+                completed: Math.round( Math.random() * 1 ) === 0 ? false : true,
+                listId: list.id,
+                itemId: item.id
+            });
+        }
     }
 }
